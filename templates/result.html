@@ -1,0 +1,6 @@
+{% extends "index.html" %}
+{% block video %}
+    <video controls>
+        <source src=" {{url_for('send_file', filename=video_name)}} " type="video/mp4">
+    </video>
+{% endblock %}
