@@ -3,7 +3,7 @@ from rofl import ROFL
 import api
 import datetime as dt
 
-rofl = ROFL("trained_knn_model.clf", retina=True, emotions=True)
+rofl = ROFL("trained_knn_model.clf", retina=False, emotions=True)
 room = "305"
 hour_range = [str(i) if i > 9 else "0" + str(i) for i in range(8,22)]
 rofl_folder = "14Xsw4xk6vUFINsyy1OH5937Rq98W4JHw"
