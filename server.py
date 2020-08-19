@@ -3,7 +3,7 @@ from rofl import ROFL
 import api
 import datetime as dt
 
-rofl = ROFL("trained_knn_model.clf", retina=False, emotions=True)
+rofl = ROFL("trained_knn_model.clf", retina=True, emotions=True)
 room = "305"
 hour_range = [str(i) if i > 9 else "0" + str(i) for i in range(8,22)]
 rofl_folder = "14Xsw4xk6vUFINsyy1OH5937Rq98W4JHw"
@@ -36,21 +36,13 @@ async def watch_drive_in_range():
 
 async def recognize():
     if len([line.strip() for line in open("queue.txt")]) > 0:
-        filename = await rofl.async_run_from_queue(ioloop, fps_factor=30, emotions=True)
+        filename = await rofl.async_run_from_queue(ioloop, fps_factor=60, emotions=True)
+        api.upload_video(filename, upload_name=filename.split('/')[-1], folder_id=rofl_folder)
+        api.upload_video(filename, upload_name=filename, room_num=room)
         return filename
     else:
         await asyncio.sleep(5)
         return 0
-
-
-async def see_emotions():
-    if len([line.strip() for line in open("queue.txt")]) > 0:
-        filename = rofl.run_from_queue(fps_factor=60, emotions=True)
-        return filename
-    else:
-        await asyncio.sleep(5)
-        return 0
-
 
 async def asynchronous(futures):
     for i, future in enumerate(asyncio.as_completed(futures)):
@@ -65,7 +57,7 @@ ioloop = asyncio.get_event_loop()
 # asyncio.ensure_future(watch_drive())
 # futures = [watch_drive_in_range(), see_emotions()]
 # asyncio.ensure_future(watch_drive_in_range())
-asyncio.ensure_future(see_emotions())
+asyncio.ensure_future(watch_drive_in_range())
 asyncio.ensure_future(recognize())
 # asyncio.ensure_future(asynchronous(futures))
 ioloop.run_forever()
