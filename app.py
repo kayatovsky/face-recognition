@@ -283,4 +283,4 @@ if __name__ == "__main__":
     # print(celery.current_worker_task)
     # result = AsyncResult(id=task.task_id, app=celery).get()
     context = (os.path.join(cert_dir, CERT_FILE), os.path.join(cert_dir, KEY_FILE))
-    app.run( ssl_context=context, debug=False, threaded=True, port='8080')
+    app.run( ssl_context=context, debug=False, threaded=True, port='8080', host='0.0.0.0')
