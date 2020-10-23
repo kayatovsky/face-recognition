@@ -6,21 +6,19 @@
 </head>
 <body>
     <h1>Recognition Of Faces Lectured</h1>
-
-    <h2>Загрузите видеофайл:</h2>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <input type="submit" value="Upload">
-    </form>
+    <p style="display: {{displayment}}"> Welcome, {{username}} </p>
+    <a class="button" href="/login">Login with Google</a>
+    <a class="button" href="/logout" style="display: {{displayment}}">Logout</a>
     <hr>
-
+    <iframe src="https://drive.google.com/file/d/1hr_F4GAnvZrww5TETZ6Vz_2IvtgdT4iu/preview" width="640" height="480" allowfullscreen>
     <a href="https://drive.google.com/file/d/1hr_F4GAnvZrww5TETZ6Vz_2IvtgdT4iu/view?usp=sharing">
-        Example</a>
-    <video controls>
-        <source src="./queue/2020-08-12_08-00_305_54.mp4" type="video/mp4">
-        your browser does not support video tag
-    </video>
+        Example
+    </a>
+    </iframe>
+    <hr>
     {% block exception %}{% endblock %}
-    {% block video %}{% endblock %}
+
+    {% block upload %}{% endblock %}
+    {% block thank %}{% endblock %}
 </body>
 </html>
