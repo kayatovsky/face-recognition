@@ -233,11 +233,11 @@ def get_google_provider_cfg():
 
 
 # send_file_with_email('iasizykh@miem.hse.ru', 'Test', 'Test')
-# build_service()
+build_service()
 
-message = create_message(EMAIL_FROM, 'iasizykh@miem.hse.ru', 'Test', 'Testment')
-send_message('me', message)
-pp = pp.PrettyPrinter(indent=4)
+# message = create_message(EMAIL_FROM, 'iasizykh@miem.hse.ru', 'Test', 'Testment')
+# send_message('me', message)
+# pp = pp.PrettyPrinter(indent=4)
 
 # r = upload_video("video_output/twice.mp4", "twice.mp4", folder_id="14Xsw4xk6vUFINsyy1OH5937Rq98W4JHw")
 # print(r)
