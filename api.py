@@ -205,7 +205,7 @@ def build_service():
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                f"{SERVICE_ACCOUNT_FILE}", SCOPES)
+                f"{EMAIL_ACCOUNT_FILE}", SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
         with open('token.pickle', 'wb') as token:
