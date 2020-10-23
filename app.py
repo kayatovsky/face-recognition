@@ -214,8 +214,8 @@ def upload():
 
         file.save(path_uuid)
         logger.info(f'the file {file.filename} has been successfully saved as {filename_uuid}')
-        processing.apply_async((filename_uuid, emotions, recognize, remember), link_error=error_handler.s())
-        # processing(filename_uuid, emotions, recognize, remember)
+        # processing.apply_async((filename_uuid, emotions, recognize, remember), link_error=error_handler.s())
+        processing(filename_uuid, emotions, recognize, remember)
         return redirect('/')
 
 
@@ -283,4 +283,4 @@ if __name__ == "__main__":
     # print(celery.current_worker_task)
     # result = AsyncResult(id=task.task_id, app=celery).get()
     context = (os.path.join(cert_dir, CERT_FILE), os.path.join(cert_dir, KEY_FILE))
-    app.run( ssl_context=context, debug=False, threaded=True, port='8080', host='0.0.0.0')
+    app.run( ssl_context=context, debug=False, threaded=True, port='80')
