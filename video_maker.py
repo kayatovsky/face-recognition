@@ -8,6 +8,7 @@ def boxes(img_arr, predictions, headcount=False, faces_on=False):
     for img, pred in zip(img_arr, predictions):
         if faces_on:
             for p in pred:
+                img = np.copy(img)
                 cv2.rectangle(img, (p[1][1], p[1][2]), (p[1][3], p[1][0]), (0, 0, 255), 2)
                 cx = p[1][1]
                 cy = p[1][2] + 12

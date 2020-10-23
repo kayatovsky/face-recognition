@@ -205,7 +205,7 @@ def build_service():
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                f"{EMAIL_ACCOUNT_FILE}", SCOPES)
+                f"{SERVICE_ACCOUNT_FILE}", SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
         with open('token.pickle', 'wb') as token:
@@ -233,10 +233,11 @@ def get_google_provider_cfg():
 
 
 # send_file_with_email('iasizykh@miem.hse.ru', 'Test', 'Test')
-build_service()
-# message = create_message(EMAIL_FROM, 'iasizykh@miem.hse.ru', 'Test', 'Testment', 'queue/c9dc7d2c-1508-4676-b703-1bd7d2ab9d86.mp4')
-# send_message('me', message)
-# pp = pprint.PrettyPrinter(indent=4)
+# build_service()
+
+message = create_message(EMAIL_FROM, 'iasizykh@miem.hse.ru', 'Test', 'Testment')
+send_message('me', message)
+pp = pp.PrettyPrinter(indent=4)
 
 # r = upload_video("video_output/twice.mp4", "twice.mp4", folder_id="14Xsw4xk6vUFINsyy1OH5937Rq98W4JHw")
 # print(r)

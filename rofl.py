@@ -10,6 +10,7 @@ from strangers import Clusterizer
 import video_maker
 import encode
 from emotions import Emanalisis
+import shutil
 
 
 class ROFL:
@@ -23,10 +24,11 @@ class ROFL:
             self.finder = None
 
         if emotions:
-            self.emotions = Emanalisis(on_gpu=on_gpu,path_to_classifier="net_714.pth", finder=self.finder)
+            self.emotions = Emanalisis(on_gpu=on_gpu, path_to_classifier="net_714.pth", finder=self.finder)
         else:
             self.emotions = None
 
+        self.recognizer_retrained = True
         self.recog = Recognizer(finder=self.finder)
         self.recog.load_model(recognizer_path)
         self.clust = Clusterizer(samples=5)
@@ -64,7 +66,7 @@ class ROFL:
                 t = time.time()
             face_loc = self.finder.detect_faces(img)
             if recognize:
-                face_predictions.append(self.recog.predict(img, distance_threshold=0.5, X_face_locations=face_loc))
+                face_predictions.append(self.recog.predict(img, distance_threshold=0.4, X_face_locations=face_loc))
             if emotions:
                 em_predictions.append(self.emotions.classify_emotions(img, face_locations=face_loc))
             if i == 2:
@@ -93,20 +95,20 @@ class ROFL:
         return predictions
 
     def basic_run(self, in_dir, filename, fps_factor=1, recognize=False, remember=False, emotions=False):
-        img_arr, orig_fps = self.load_video(in_dir + "/" + filename, fps_factor)
+        orig_img_arr, orig_fps = self.load_video(in_dir + "/" + filename, fps_factor)
         new_fps = orig_fps / fps_factor
 
-        face_predictions, em_predictions = self.analyse(img_arr, recognize=recognize, emotions=emotions)
+        face_predictions, em_predictions = self.analyse(orig_img_arr, recognize=recognize, emotions=emotions)
 
         if recognize:
-            img_arr = video_maker.boxes(img_arr, predictions=face_predictions, headcount=True, faces_on=recognize)
+            img_arr = video_maker.boxes(orig_img_arr, predictions=face_predictions, headcount=True, faces_on=recognize)
         if emotions:
-            img_arr = video_maker.emotion_boxes(img_arr, em_predictions, headcount=True, faces_on=recognize)
+            img_arr = video_maker.emotion_boxes(orig_img_arr, em_predictions, headcount=True, faces_on=recognize)
 
         filename = video_maker.render("video_output", filename, img_arr, new_fps)
 
-        if remember:
-            for img, pred in zip(img_arr, face_predictions):
+        if remember and recognize:
+            for img, pred in zip(orig_img_arr, face_predictions):
                 for name, (top, right, bottom, left) in pred:
                     if name == "unknown":
                         # save_img = cv2.cvtColor(img[top:bottom, right:left], cv2.COLOR_BGR2RGB)
@@ -116,21 +118,20 @@ class ROFL:
                         cv2.imwrite("./strangers/" + datetime.datetime.now().strftime("%d%m%Y%H%M%S%f") + ".jpg",
                                     save_img)
 
-            encode.encode_cluster("./strangers", "./enc_cluster.pickle")
+            encode.encode_cluster_sf("./strangers", "./enc_cluster.pickle")
             self.clust.remember_strangers("./enc_cluster.pickle", "./known_faces")
-
         return filename
 
     async def async_run(self, loop, in_dir, filename, fps_factor=1, recognize=False, remember=False, emotions=False):
-        img_arr, orig_fps = await loop.run_in_executor(None, self.load_video, in_dir + "/" + filename, fps_factor)
+        orig_img_arr, orig_fps = await loop.run_in_executor(None, self.load_video, in_dir + "/" + filename, fps_factor)
         # img_arr, orig_fps = self.load_video(in_dir + "/" + filename, fps_factor)
         new_fps = orig_fps / fps_factor
         face_predictions, em_predictions = await loop.run_in_executor(None, self.analyse, in_dir, filename,
                                                                       fps_factor, recognize, remember, emotions)
         # face_predictions, em_predictions = self.analyse(img_arr, recognize=recognize, emotions=emotions)
 
-        img_arr = video_maker.boxes(img_arr, predictions=face_predictions, headcount=True, faces_on=recognize,
-                                    emotions_lapse=em_predictions)
+        img_arr = video_maker.boxes(orig_img_arr, predictions=face_predictions, headcount=True, faces_on=recognize)
+
         filename = video_maker.render("video_output", filename, img_arr, new_fps)
 
         if remember:
@@ -145,65 +146,12 @@ class ROFL:
                                     save_img)
 
             # encode.encode_cluster("./strangers", "./enc_cluster.pickle")
-            await loop.run_in_executor(None, encode.encode_cluster, "./strangers", "./enc_cluster.pickle")
+            await loop.run_in_executor(None, encode.encode_cluster_sf, "./strangers", "./enc_cluster.pickle")
             await loop.run_in_executor(None, self.clust.remember_strangers, "./enc_cluster.pickle", "./known_faces")
             # self.clust.remember_strangers("./enc_cluster.pickle", "./known_faces")
 
         return filename
 
-    # def run_and_remember_strangers(self, in_dir, filename, fps_factor):
-    #     img_arr, orig_fps = self.load_video(in_dir + "/" + filename, fps_factor)
-    #     new_fps = orig_fps / fps_factor
-    #     predictions = self.analyse(img_arr)
-    #
-    #     for img, pred in zip(img_arr, predictions):
-    #         for name, (top, right, bottom, left) in pred:
-    #             if name == "unknown":
-    #                 # save_img = cv2.cvtColor(img[top:bottom, right:left], cv2.COLOR_BGR2RGB)
-    #                 save_img = img[top:bottom, left:right]
-    #                 # cv2.imshow("Haha", save_img)
-    #                 # cv2.waitKey(0)
-    #                 cv2.imwrite("./strangers/" + datetime.datetime.now().strftime("%d%m%Y%H%M%S%f") + ".jpg",
-    #                             save_img)
-    #
-    #     encode.encode_cluster("./strangers", "./enc_cluster.pickle")
-    #
-    #     img_arr = video_maker.boxes(img_arr, predictions)
-    #     filename = video_maker.render("video_output", filename, img_arr, new_fps)
-    #     self.clust.remember_strangers("./enc_cluster.pickle", "./known_faces")
-    #     return filename
-    #
-    # def prerun(self, in_dir, filename, fps_factor=1):
-    #     img_arr, orig_fps = self.load_video(in_dir + "/" + filename, fps_factor)
-    #     new_fps = orig_fps / fps_factor
-    #     predictions = self.analyse(img_arr)
-    #     return predictions, img_arr, new_fps
-    #
-    # def post_run(self, filename, predictions, img_arr, new_fps):
-    #     for img, pred in zip(img_arr, predictions):
-    #         for name, (top, right, bottom, left) in pred:
-    #             if name == "unknown":
-    #                 # save_img = cv2.cvtColor(img[top:bottom, right:left], cv2.COLOR_BGR2RGB)
-    #                 save_img = img[top:bottom, left:right]
-    #                 # cv2.imshow("Haha", save_img)
-    #                 # cv2.waitKey(0)
-    #                 cv2.imwrite("./strangers/" + datetime.datetime.now().strftime("%d%m%Y%H%M%S%f") + ".jpg",
-    #                             save_img)
-    #
-    #     encode.encode_cluster("./strangers", "./enc_cluster.pickle")
-    #
-    #     img_arr = video_maker.boxes(img_arr, predictions)
-    #     filename = video_maker.render("video_output", filename, img_arr, new_fps)
-    #     self.clust.remember_strangers("./enc_cluster.pickle", "./strangers")
-    #     return filename
-    #
-    # def run_emotions(self, in_dir, filename, fps_factor):
-    #     img_arr, orig_fps = self.load_video(in_dir + "/" + filename, fps_factor)
-    #     new_fps = orig_fps / fps_factor
-    #     predictions = self.find_emotions(img_arr)
-    #     img_arr = video_maker.emotion_boxes(img_arr, predictions, headcount=True)
-    #     filename = video_maker.render("video_output", filename, img_arr, new_fps)
-    #     return filename
     def run_from_queue(self, fps_factor=1, recognize=False, remember=False, emotions=False):
 
         f = open("queue.txt")
@@ -254,3 +202,14 @@ class ROFL:
         f = open("queue.txt", "a")
         f.write(filename + "\n")
         f.close()
+
+    def add_person(self, name, filename=None):
+        os.mkdir('known_faces/' + name)
+        if filename is not None:
+            shutil.move(filename, "known_faces/" + name + "/" + filename.split('/')[-1])
+            self.recognizer_retrained = False
+
+    def add_pics(self, name, filenames):
+        for file in filenames:
+            shutil.move(file, "known_faces/" + name + "/" + file.split('/')[-1])
+        self.recognizer_retrained = False
