@@ -49,3 +49,5 @@ celery -A app.celery worker --loglevel=info
 ``` python
 python app.py
 ```
+### Докерезация
+to be continued...
