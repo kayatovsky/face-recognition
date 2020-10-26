@@ -33,7 +33,19 @@ pip install -r requirements.txt
 
 * [Файл](https://drive.google.com/file/d/1RPpTYVMQb9H41u9JK_FXiuY15YJFCxSs/view?usp=sharing)
 
-8) Запустите из приложение
+8) Установите [Redis](https://redis.io/download) и запустите его 
+
+```
+src/redis-server
+```
+
+9) Запустите Worker'а в головной директории проекта
+
+```
+celery -A app.celery worker --loglevel=info
+```
+
+10) Запустите из приложение
 ``` python
 python app.py
 ```
