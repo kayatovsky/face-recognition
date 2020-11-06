@@ -93,7 +93,7 @@ def download_video_nvr(room, date, time, filename=None, need_folder=False):
         print("Download process is %d%%. " % int(status.progress() * 100))
 
     if need_folder:
-        return results['files'][0]['parents']
+        return filename, results['files'][0]['parents']
     else:
         return filename
 

@@ -179,6 +179,33 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
+@app.route("/nvr", methods=['POST'])
+def nvr():
+    if request.method == 'POST':
+
+        emotions = "emotions" in request.form
+        recognize = "recognize" in request.form
+        remember = "remember" in request.form
+        room = request.form['room']
+        hour = request.form['hour']
+        minute = request.form['min']
+        date = request.form['date']
+        time = hour + ":" + minute
+
+        try:
+            filename = api.download_video_nvr(room, date, time)
+
+        except:
+            msg = f'Searching file in NVR archive something went wrong'
+            logger.error(msg)
+            return render_template('exception.html', text=msg)
+
+        # processing.apply_async((filename, emotions, recognize, remember,), countdown=15)
+
+        processing(filename, emotions, recognize, remember)
+        return redirect('/')
+
+
 @app.route('/upload', methods=['POST'])
 def upload():
     """Upload file endpoint."""
@@ -231,14 +258,14 @@ def processing(filename):
     """Celery function for the image processing."""
     rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
     rofl.basic_run("queue", filename, emotions=True, fps_factor=30)
-    # print(filename)
+    print(filename)
     i = 30
-    # while not os.path.isfile("video_output/" + filename) and i != 0:
-    #     time.sleep(1)
-    #     i -= 1
-    # api.send_file_with_email(current_user.email, "Processed video",
-    #                          "Thank you, that's your processed video",
-    #                          "video_output/" + filename)
+    while not os.path.isfile("video_output/" + filename) and i != 0:
+        time.sleep(1)
+        i -= 1
+    api.send_file_with_email(current_user.email, "Processed video",
+                             "Thank you, that's your processed video",
+                             "video_output/" + filename)
     os.remove("queue/" + filename)
     r = api.upload_video("video_output/" + filename, filename.split('/')[-1], folder_id=rofl_folder)
     _id = r['id']
@@ -251,5 +278,11 @@ if __name__ == "__main__":
     # запускаем редис (или перезапускаем)
     # flower celery (пишем в терминале1)
     # celery -A app2.celery worker -l info -P eventlet --loglevel=info (запускаем в терминале2)
+
+    if not os.path.isdir('video_output'):
+        os.mkdir('video_output')
+    if not os.path.isdir('queue'):
+        os.mkdir('queue')
+
     context = (os.path.join(cert_dir, CERT_FILE), os.path.join(cert_dir, KEY_FILE))
     app.run(ssl_context=context, debug=True, threaded=True, port='80', host='127.0.0.1')

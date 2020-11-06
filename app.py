@@ -24,7 +24,7 @@ import sqlite3
 from db import init_db_command
 from user import User
 import asyncio
-import redis
+from redis import Redis
 from OpenSSL import SSL, crypto
 from self_sign_cert import gen_self_signed_cert
 
@@ -53,7 +53,7 @@ GOOGLE_DISCOVERY_URL = (
 app = Flask(__name__)
 app.config.update(result_backend='redis://127.0.0.1:6379/0', broker_url='redis://127.0.0.1:6379/0')
 
-rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
+# rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
 
 celery = Celery(main=__name__, broker='redis://127.0.0.1:6379/0', backend='redis://127.0.0.1:6379/0')
 
@@ -181,6 +181,33 @@ def logout():
     return redirect(url_for("index"))
 
 
+@app.route("/nvr", methods=['POST'])
+def nvr():
+    if request.method == 'POST':
+
+        emotions = "emotions" in request.form
+        recognize = "recognize" in request.form
+        remember = "remember" in request.form
+        room = request.form['room']
+        hour = request.form['hour']
+        minute = request.form['min']
+        date = request.form['date']
+        time = hour + ":" + minute
+
+        try:
+            filename = api.download_video_nvr(room, date, time)
+
+        except:
+            msg = f'Searching file in NVR archive something went wrong'
+            logger.error(msg)
+            return render_template('exception.html', text=msg)
+
+        # processing.apply_async((filename, emotions, recognize, remember,), countdown=15)
+
+        processing(filename, emotions, recognize, remember)
+        return redirect('/')
+
+
 def allowed_file(filename):
     """Check format of the file."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in config['ALLOWED_EXTENSIONS']
@@ -214,8 +241,8 @@ def upload():
 
         file.save(path_uuid)
         logger.info(f'the file {file.filename} has been successfully saved as {filename_uuid}')
-        # processing.apply_async((filename_uuid, emotions, recognize, remember), link_error=error_handler.s())
-        processing(filename_uuid, emotions, recognize, remember)
+        processing.apply_async((filename_uuid, emotions, recognize, remember,), countdown=15)
+        # processing(filename_uuid, emotions, recognize, remember)
         return redirect('/')
 
 
@@ -243,6 +270,7 @@ def send_file(filename):
 @celery.task(name='celery.processing')
 def processing(filename, em=True, recog=True, remem=True):
     """Celery function for the image processing."""
+    rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
 
     # rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
 
@@ -282,5 +310,10 @@ if __name__ == "__main__":
     # print(task)
     # print(celery.current_worker_task)
     # result = AsyncResult(id=task.task_id, app=celery).get()
+    if not os.path.isdir('video_output'):
+        os.mkdir('video_output')
+    if not os.path.isdir('queue'):
+        os.mkdir('queue')
+
     context = (os.path.join(cert_dir, CERT_FILE), os.path.join(cert_dir, KEY_FILE))
-    app.run( ssl_context=context, debug=False, threaded=True, port='80')
+    app.run(ssl_context=context, debug=True, threaded=True, port='80', host='127.0.0.1')
