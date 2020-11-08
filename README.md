@@ -39,15 +39,17 @@ pip install -r requirements.txt
 src/redis-server
 ```
 
+Или [версию для Windows](https://drive.google.com/file/d/1SYz4KJ75hX6VY6_pOu7vZWjFGBG0HK7D/view), если вы тестите на ПК. И запустите **redis-server.exe**.
+
 9) Запустите Worker'а в головной директории проекта
 
 ```
-celery -A app.celery worker --loglevel=info
+celery -A app3.celery worker -l info -P eventlet
 ```
 
 10) Запустите из приложение
 ``` python
-python app.py
+python app3.py
 ```
 ### Докерезация
 to be continued...
