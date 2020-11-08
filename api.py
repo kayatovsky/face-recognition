@@ -35,11 +35,15 @@ GOOGLE_CLIENT_SECRET = 'bIb1mKNZH18LC5lSeDj1QTMk'
 
 EMAIL_FROM = "noreply@facerecognizer.com"
 
-credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-# email_cred = service_account.Credentials.from_service_account_file(EMAIL_ACCOUNT_FILE, scopes=SCOPES)
-service = build('drive', 'v3', credentials=credentials)
-with open('Emotions_Project-481579272f6a.json', 'r') as j:
-    data = json.load(j)
+credentials = None
+service = None
+# credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+# # email_cred = service_account.Credentials.from_service_account_file(EMAIL_ACCOUNT_FILE, scopes=SCOPES)
+# service = build('drive', 'v3', credentials=credentials)
+# with open('Emotions_Project-481579272f6a.json', 'r') as j:
+#     data = json.load(j)
+
+
 # delegated_credentials = credentials.with_subject(EMAIL_FROM)
 # service = build('gmail', 'v1', credentials=delegated_credentials)
 
@@ -168,7 +172,6 @@ def create_message(sender, to, subject, message_text, file=None):
 
 
 def send_message(user_id, message):
-
   """Send an email message.
   Args:
     service: Authorized Gmail API service instance.
@@ -233,7 +236,7 @@ def get_google_provider_cfg():
 
 
 # send_file_with_email('iasizykh@miem.hse.ru', 'Test', 'Test')
-build_service()
+# build_service()
 
 # message = create_message(EMAIL_FROM, 'iasizykh@miem.hse.ru', 'Test', 'Testment')
 # send_message('me', message)
