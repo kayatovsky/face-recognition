@@ -1,20 +1,5 @@
 {% extends "index.html" %}
-{% block upload %}
-    <h2>Загрузите видеофайл:</h2>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <input type="email" name="email" title="Email" id="email">
-        <label for="email">Email to submit</label>
-        <input type="checkbox" name="recognize" title="Recognize faces" value="recognize" id="recognize">
-        <label for="recognize">Face recognition</label>
-        <input type="checkbox" name="emotions" title="Emotions" value="emotions" id="emotions">
-        <label for="emotions">Emotion recognition</label>
-        <input type="checkbox" name="remember" title="Remember strangers" value="remember" id="remember">
-        <label for="remember">Remember strangers</label>
-        <input type="submit" value="Upload">
-    </form>
-    <hr>
-
+{% block nvr %}
     <h2>Выберите время</h2>
     <form action="/nvr" method="post" enctype="multipart/form-data">
         <select id="room" name="room">
@@ -55,12 +40,12 @@
             <option value="30">30</option>
         </select>
         <label for="min">minutes</label>
-        <input type="checkbox" name="recognize" title="Recognize faces" value="recognize" id="recognize2">
-        <label for="recognize2">Face recognition</label>
-        <input type="checkbox" name="emotions" title="Emotions" value="emotions" id="emotions2">
-        <label for="emotions2">Emotion recognition</label>
-        <input type="checkbox" name="remember" title="Remember strangers" value="remember" id="remember2">
-        <label for="remember2">Remember strangers</label>
+        <input type="checkbox" name="recognize" title="Recognize faces" value="recognize" id="recognize">
+        <label for="recognize">Face recognition</label>
+        <input type="checkbox" name="emotions" title="Emotions" value="emotions" id="emotions">
+        <label for="emotions">Emotion recognition</label>
+        <input type="checkbox" name="remember" title="Remember strangers" value="remember" id="remember">
+        <label for="remember">Remember strangers</label>
 
         <input type="submit" value="Upload">
     </form>

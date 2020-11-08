@@ -1,14 +1,10 @@
 import logging
 import os
 import uuid
-import yaml
 from werkzeug.utils import secure_filename
-import api
-from celery import Celery
-from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
 from flask import Flask, redirect, render_template, request, send_from_directory, url_for
-from flask_celery import make_celery
+from celery import Celery
 from rofl import ROFL
 from flask_login import (
     LoginManager,
@@ -24,22 +20,34 @@ import sqlite3
 from db import init_db_command
 from user import User
 import asyncio
-from redis import Redis
-from OpenSSL import SSL, crypto
-from self_sign_cert import gen_self_signed_cert
+import uuid
+import yaml
+import api
+import time
 
+app = Flask(__name__)
+app.config.update(BEDUG=True, TESTING=True,
+                  ALLOWED_EXTENSIONS=['mp4'], LOGFILE='app.log',
+                  UPLOAD_FOLDER='queue', RESULT_FOLDER='video_output',
+                  CELERY_BROKER_URL='redis://localhost:6379',
+                  CELERY_RESULT_BACKEND='redis://localhost:6379')
+
+celery = Celery(app.name)
+celery.config_from_object('celeryconfig')
+
+logger = logging.getLogger(__name__)
+celery_logger = get_task_logger(__name__)
+
+formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+file_handler = logging.FileHandler(app.config['LOGFILE'])
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
 
 cert_dir = 'certificates'
 CERT_FILE = 'certificate.crt'
 KEY_FILE = 'app.key'
-
-# context = SSL.Context(SSL.SSLv23_METHOD)
-# cert, key = gen_self_signed_cert()
-# open(os.path.join(cert_dir, CERT_FILE), "wt").write(cert)
-# open(os.path.join(cert_dir, KEY_FILE), "wt").write(key)
-# context.use_privatekey_file(os.path.join(cert_dir, KEY_FILE))
-# context.use_certificate_file(os.path.join(cert_dir, CERT_FILE))
-
 
 config_path = os.path.abspath(os.path.join(os.getcwd(), "config.yml"))
 config = yaml.load(open(config_path), Loader=yaml.FullLoader)
@@ -50,22 +58,6 @@ GOOGLE_DISCOVERY_URL = (
     "https://accounts.google.com/.well-known/openid-configuration"
 )
 
-app = Flask(__name__)
-app.config.update(result_backend='redis://127.0.0.1:6379/0', broker_url='redis://127.0.0.1:6379/0')
-
-# rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
-
-celery = Celery(main=__name__, broker='redis://127.0.0.1:6379/0', backend='redis://127.0.0.1:6379/0')
-
-# celery = make_celery(app)
-
-logger = logging.getLogger(__name__)
-celery_logger = get_task_logger(__name__)
-
-formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-file_handler = logging.FileHandler(config['LOGFILE'])
-file_handler.setFormatter(formatter)
-
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 
@@ -73,10 +65,9 @@ app.secret_key = os.urandom(24)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-ioloop = asyncio.get_event_loop()
-
 try:
     init_db_command()
+    pass
 except sqlite3.OperationalError:
     # Assume it's already been created
     pass
@@ -107,10 +98,12 @@ def index():
     print(request.remote_addr)
 
     displayment = 'none'
+
     if current_user.is_authenticated:
         displayment = 'inline'
         user = current_user.name
         return render_template('upload.html', displayment=displayment, username=user)
+
     return render_template('index.html', displayment=displayment)
 
 
@@ -181,6 +174,11 @@ def logout():
     return redirect(url_for("index"))
 
 
+def allowed_file(filename):
+    """Check format of the file."""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
 @app.route("/nvr", methods=['POST'])
 def nvr():
     if request.method == 'POST':
@@ -208,11 +206,6 @@ def nvr():
         return redirect('/')
 
 
-def allowed_file(filename):
-    """Check format of the file."""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in config['ALLOWED_EXTENSIONS']
-
-
 @app.route('/upload', methods=['POST'])
 def upload():
     """Upload file endpoint."""
@@ -222,9 +215,6 @@ def upload():
             logger.error(msg)
             return render_template('exception.html', text=msg)
 
-        emotions = "emotions" in request.form
-        recognize = "recognize" in request.form
-        remember = "remember" in request.form
         file = request.files['file']
         if file and not allowed_file(file.filename):
             msg = f'the file {file.filename} has wrong extention'
@@ -232,17 +222,16 @@ def upload():
             return render_template('exception.html', text=msg)
 
         path = os.path.abspath(os.path.join(
-            os.getcwd(), config['UPLOAD_FOLDER'], secure_filename(file.filename)))
+            os.getcwd(), app.config['UPLOAD_FOLDER'], secure_filename(file.filename)))
         filename, file_extension = os.path.splitext(path)
 
         # Set the uploaded file a uuid name
         filename_uuid = str(uuid.uuid4()) + file_extension
-        path_uuid = os.path.abspath(os.path.join(os.getcwd(), config['UPLOAD_FOLDER'], filename_uuid))
+        path_uuid = os.path.abspath(os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER'], filename_uuid))
 
         file.save(path_uuid)
         logger.info(f'the file {file.filename} has been successfully saved as {filename_uuid}')
-        processing.apply_async((filename_uuid, emotions, recognize, remember,), countdown=15)
-        # processing(filename_uuid, emotions, recognize, remember)
+        filename = processing.apply_async((filename_uuid,), countdown=15)
         return redirect('/')
 
 
@@ -250,10 +239,11 @@ def upload():
 def thank():
     """Process the image endpoint."""
 
-    # async_result = AsyncResult(id=task.task_id, app=celery)
-    # processing_result = async_result.get()
-
-    return render_template('thank.html')
+# @app.route('/result/<filename>')
+# def send_file(filename):
+#     """Show result endpoint."""
+#     return send_from_directory(os.path.abspath(os.path.join(os.getcwd(), app.config['RESULT_FOLDER'])),
+#                                filename)
 
 
 def send_file(filename):
@@ -263,26 +253,14 @@ def send_file(filename):
     return "https://drive.google.com/file/d/" + _id + "/preview"
 
 
-# async def run(filename, fps_factor, recog, remem, em):
-#     await ioloop.run_in_executor(None, rofl.basic_run, "queue", filename, fps_factor, recog, remem, em)
-
-
-@celery.task(name='celery.processing')
-def processing(filename, em=True, recog=True, remem=True):
+@celery.task()  # name='celery.processing'
+def processing(filename):
     """Celery function for the image processing."""
     rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
-
-    # rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
-
-    celery_logger.info(f'{filename} is processing')
-
-    # ioloop.run_until_complete(run(filename, 30, recog, remem, em))
-    rofl.basic_run("queue", filename, fps_factor=30, recognize=recog, remember=remem, emotions=em)
-    celery_logger.info(f'processing {filename} is finished')
-
+    rofl.basic_run("queue", filename, emotions=True, fps_factor=30)
+    print(filename)
     i = 30
     while not os.path.isfile("video_output/" + filename) and i != 0:
-        import time
         time.sleep(1)
         i -= 1
     api.send_file_with_email(current_user.email, "Processed video",
@@ -295,21 +273,12 @@ def processing(filename, em=True, recog=True, remem=True):
     return filename
 
 
-@celery.task
-def error_handler(uuid):
-    result = AsyncResult(uuid)
-    exc = result.get(propagate=False)
-    print('Task {0} raised exception: {1!r}\n{2!r}'.format(
-          uuid, exc, result.traceback))
-
-
 if __name__ == "__main__":
-    # exec('celery -A app.celery worker --loglevel=info')
-    # celery.worker_main()
-    # task = processing.apply_async(('twice.mp4', True, False, False), ignore_result=True)
-    # print(task)
-    # print(celery.current_worker_task)
-    # result = AsyncResult(id=task.task_id, app=celery).get()
+    # pip install eventlet (устанвливаем eventlet в терминале, один раз)
+    # запускаем редис (или перезапускаем)
+    # flower celery (пишем в терминале1)
+    # celery -A app2.celery worker -l info -P eventlet --loglevel=info (запускаем в терминале2)
+
     if not os.path.isdir('video_output'):
         os.mkdir('video_output')
     if not os.path.isdir('queue'):
