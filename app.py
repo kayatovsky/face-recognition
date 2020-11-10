@@ -290,7 +290,6 @@ def processing_nvr(data, email):
     room = data['room']
     date = data['date']
     time = data['time']
-    print(room, date, time)
     try:
         filename = api.download_video_nvr(room, date, time)
     except:
@@ -321,7 +320,7 @@ if __name__ == "__main__":
     # запускаем редис (или перезапускаем)
     # flower celery (пишем в терминале1)
     # celery -A app.celery worker --loglevel=info -n high -Q high -P eventlet
-    # celery -A app.celery worker --loglevel=info -n low1 -Q low -P solo
+    # celery -A app.celery worker --loglevel=info -n low1 -Q low -P eventlet
     # celery -A app.celery worker --loglevel=info -n low2 -Q low -P eventlet
     # celery -A app.celery worker --loglevel=info -n low3 -Q low -P eventlet
     # попробовать откатить селери до 3.1.24 примерно

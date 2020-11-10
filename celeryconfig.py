@@ -8,7 +8,6 @@ broker_url = os.environ.get(
 result_backend = broker_url
 
 worker_max_tasks_per_child = 4
-# FORKED_BY_MULTIPROCESSING = 1
 task_queues = (
     Queue('high', Exchange('high'), routing_key='high'),
     Queue('normal', Exchange('normal'), routing_key='normal'),
