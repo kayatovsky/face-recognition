@@ -299,7 +299,7 @@ def processing_nvr(data, email):
 
     rofl = ROFL("trained_knn_model.clf", retina=True,
                 on_gpu=False, emotions=True)
-    rofl.basic_run("queue", filename, emotions=data['em'],
+    rofl.basic_run("queue", filename.split('/')[1], emotions=data['em'],
                    recognize=data['recog'], remember=data['remember'],
                    fps_factor=30)
     print(filename)
