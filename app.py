@@ -267,7 +267,7 @@ def send_file(filename, link=''):
     return "https://drive.google.com/file/d/" + _id + "/" + link
 
 
-@celery.task()  # name='celery.processing'
+@celery.task(name='celery.processing')
 def processing(filename, em=False, recog=False, remember=False, email=None):
     """Celery function for the image processing."""
     rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
@@ -284,8 +284,8 @@ def processing(filename, em=False, recog=False, remember=False, email=None):
     os.remove("queue/" + filename)
 
 
-@celery.task()  # name='celery.processing_nvr'
-def processing_nvr(data, email):
+@celery.task(name='celery.processing_nvr')
+def processing_nvr(data, email=None):
     """Celery function for the image processing."""
     room = data['room']
     date = data['date']
