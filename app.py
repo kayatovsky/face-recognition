@@ -7,7 +7,6 @@ from flask import Flask, redirect, render_template, request, send_from_directory
 from celery import Celery
 from rofl import ROFL
 import api
-from datetime import datetime, date, timedelta
 from google.oauth2 import service_account
 from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
 from googleapiclient.discovery import build
@@ -27,6 +26,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 import pprint as pp
 import json
+import datetime
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from flask_login import (
@@ -285,7 +285,7 @@ def processing(filename, em=False, recog=False, remember=False, email=None):
 
 
 @celery.task()  # name='celery.processing_nvr'
-def processing_nvr(data, email=None):
+def processing_nvr(data, email):
     """Celery function for the image processing."""
     room = data['room']
     date = data['date']
@@ -299,7 +299,7 @@ def processing_nvr(data, email=None):
 
     rofl = ROFL("trained_knn_model.clf", retina=True,
                 on_gpu=False, emotions=True)
-    rofl.basic_run("queue", filename.split('/')[1], emotions=data['em'],
+    rofl.basic_run("queue", filename, emotions=data['em'],
                    recognize=data['recog'], remember=data['remember'],
                    fps_factor=30)
     print(filename)
@@ -320,10 +320,9 @@ if __name__ == "__main__":
     # запускаем редис (или перезапускаем)
     # flower celery (пишем в терминале1)
     # celery -A app.celery worker --loglevel=info -n high -Q high -P eventlet
-    # celery -A app.celery worker --loglevel=info -n lo1 -Q low -P eventlet
-    # celery -A app.celery worker --loglevel=info -n lo2 -Q low -P eventlet
-    # celery -A app.celery worker --loglevel=info -n lo3 -Q low -P eventlet
-    # celery -A app.celery worker --loglevel=info -n lo3 -P eventlet
+    # celery -A app.celery worker --loglevel=info -n low1 -Q low -P eventlet
+    # celery -A app.celery worker --loglevel=info -n low2 -Q low -P eventlet
+    # celery -A app.celery worker --loglevel=info -n low3 -Q low -P eventlet
     # попробовать откатить селери до 3.1.24 примерно
     # попробовать другие версии eventlet
     if not os.path.isdir('video_output'):
