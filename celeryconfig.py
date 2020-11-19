@@ -21,7 +21,7 @@ CELERY_DEFAULT_ROUTING_KEY = 'normal'
 
 CELERY_ROUTES = {
     # -- HIGH PRIORITY QUEUE -- #
-    'tasks.celery.processing': {'queue': 'high'},
+    'celery.processing': {'queue': 'high'},
     # -- LOW PRIORITY QUEUE -- #
-    'tasks.celery.processing_nvr': {'queue': 'low'},
+    'celery.processing_nvr_': {'queue': 'low'},
 }
