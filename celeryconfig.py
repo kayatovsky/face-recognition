@@ -13,6 +13,10 @@ CELERY_QUEUES = (
     Queue('high', Exchange('high'), routing_key='high'),
     Queue('normal', Exchange('normal'), routing_key='normal'),
     Queue('low', Exchange('low'), routing_key='low'),
+    Queue('1', Exchange('1'), routing_key='1'),
+    Queue('2', Exchange('2'), routing_key='2'),
+    Queue('3', Exchange('3'), routing_key='3'),
+    Queue('4', Exchange('4'), routing_key='4'),
 )
 
 CELERY_DEFAULT_QUEUE = 'normal'
