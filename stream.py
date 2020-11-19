@@ -35,10 +35,18 @@ def send_file(filename, link=''):
 
 
 @celery.task(name='stream.processing_nvr_')  # name='stream.processing_nvr_'
-def processing_nvr_(filename, data, email=None):
+def processing_nvr_(data, filename, email=None):
     """Celery function for the image processing."""
+    # room = data['room']
+    # date = data['date']
+    # time = data['time']
+    # try:
+    #     filename = api.download_video_nvr(room, date, time)
+    # except:
+    #     msg = f'Searching file in NVR archive something went wrong'
     rofl = ROFL("trained_knn_model.clf", retina=True,
                 on_gpu=False, emotions=True)
+    print(filename)
     rofl.basic_run("queue", filename.split('/')[1], emotions=data['em'],
                    recognize=data['recog'], remember=data['remember'],
                    fps_factor=30)
@@ -52,6 +60,9 @@ def processing_nvr_(filename, data, email=None):
         api.send_file_with_email(email, "Processed video",
                                  "Thank you, that's your processed video\nHere is your video:\n" + vid_link)
     os.remove("queue/" + filename)
+
+# @celery.task(name='stream.download_nvr')
+# def download_nvr(room, date, time):
 
 
 if __name__ == "__main__":
@@ -70,9 +81,31 @@ if __name__ == "__main__":
             data['time'] = time_begin.strftime('%H:%M')
             print(data)
             filename = api.download_video_nvr(data['room'], data['date'], data['time'])
-            processing_nvr_.apply_async(args=(filename, [data]), queue='low', priority=1)
+            print(filename)
+            processing_nvr_.apply_async(args=[data, filename], queue='low', priority=1)
             time.sleep(10)
             time_begin += timedelta(minutes=30)
         date_begin += timedelta(days=1)
 
     #  celery worker -A stream.celery --loglevel=info -n low1 -Q low -P eventlet
+
+    # date_begin = date(2020, 2, 6)
+    # time_begin = datetime(1, 1, 1, 9, 30)
+    # time_end = datetime(1, 1, 1, 16, 00)
+    # data = {}
+    # data['room'] = '504'
+    # data['em'] = False
+    # data['recog'] = False
+    # data['remember'] = False
+    # date_end = datetime.now().date()
+    # while date_begin <= date_end:
+    #     while time_begin <= time_end:
+    #         data['date'] = date_begin.strftime('%Y-%m-%d')
+    #         data['time'] = time_begin.strftime('%H:%M')
+    #         print(data)
+    #         filename = api.download_video_nvr(data['room'], data['date'], data['time'])
+    #         print(filename)
+    #         processing_nvr_.apply_async(args=[data, filename], queue='low', priority=1)
+    #         time.sleep(10)
+    #         time_begin += timedelta(minutes=30)
+    #     date_begin += timedelta(days=1)
