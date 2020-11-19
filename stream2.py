@@ -35,7 +35,7 @@ def send_file(filename, link=''):
 
 
 @celery.task(name='stream.processing_nvr_')  # name='stream.processing_nvr_'
-def processing_nvr_(data, filename, email=None):
+def processing_nvr_(data, filename=None, email=None):
     """Celery function for the image processing."""
     # room = data['room']
     # date = data['date']
@@ -76,18 +76,33 @@ if __name__ == "__main__":
     data['remember'] = False
     date_end = datetime.now().date()
     while date_begin <= date_end:
+        data['date'] = date_begin.strftime('%Y-%m-%d')
         while time_begin <= time_end:
-            data['date'] = date_begin.strftime('%Y-%m-%d')
             data['time'] = time_begin.strftime('%H:%M')
             print(data)
-            filename = api.download_video_nvr(data['room'], data['date'], data['time'])
-            print(filename)
-            processing_nvr_.apply_async(args=[data, filename], queue='low', priority=1)
-            time.sleep(10)
+            p1 = processing_nvr_.apply_async(args=[data], queue='low', priority=1)
+            time.sleep(5)
             time_begin += timedelta(minutes=30)
+            data['time'] = time_begin.strftime('%H:%M')
+            print(data)
+            p2 = processing_nvr_.apply_async(args=[data], queue='low', priority=2)
+            time.sleep(5)
+            time_begin += timedelta(minutes=30)
+            data['time'] = time_begin.strftime('%H:%M')
+            print(data)
+            p3 = processing_nvr_.apply_async(args=[data], queue='low', priority=3)
+            time.sleep(5)
+            time_begin += timedelta(minutes=30)
+            data['time'] = time_begin.strftime('%H:%M')
+            print(data)
+            p4 = processing_nvr_.apply_async(args=[data], queue='low', priority=4)
+            time.sleep(5)
+            time_begin += timedelta(minutes=30)
+            while not (p1.ready() and p2.ready() and p3.ready() and p4.ready()):
+                time.sleep(300)
         date_begin += timedelta(days=1)
 
-    #  celery worker -A stream.celery --loglevel=info -n low1 -Q low -P eventlet
+    #  celery worker -A stream2.celery --loglevel=info -n low1 -Q low -P eventlet
 
     # date_begin = date(2020, 2, 6)
     # time_begin = datetime(1, 1, 1, 9, 30)
