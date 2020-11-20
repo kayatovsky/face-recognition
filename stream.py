@@ -4,11 +4,10 @@ import api
 import os
 from rofl import ROFL
 from celery import Celery
-from multiprocessing import Process
 from google.oauth2 import service_account
-from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
 from googleapiclient.discovery import build
 import json
+
 
 celery = Celery(__name__)
 celery.config_from_object('celeryconfig')
@@ -34,16 +33,16 @@ def send_file(filename, link=''):
     return "https://drive.google.com/file/d/" + _id + "/" + link
 
 
-@celery.task(name='stream.processing_nvr_')  # name='stream.processing_nvr_'
-def processing_nvr_(data, filename, email=None):
+@celery.task(name='stream.processing_nvr_', time_limit=14000)  # name='stream.processing_nvr_'
+def processing_nvr_(data, filename=None, email=None):
     """Celery function for the image processing."""
-    # room = data['room']
-    # date = data['date']
-    # time = data['time']
-    # try:
-    #     filename = api.download_video_nvr(room, date, time)
-    # except:
-    #     msg = f'Searching file in NVR archive something went wrong'
+    room = data['room']
+    date = data['date']
+    time = data['time']
+    try:
+        filename = api.download_video_nvr(room, date, time)
+    except:
+        msg = f'Searching file in NVR archive something went wrong'
     rofl = ROFL("trained_knn_model.clf", retina=True,
                 on_gpu=False, emotions=True)
     print(filename)
@@ -59,53 +58,58 @@ def processing_nvr_(data, filename, email=None):
     if email is not None:
         api.send_file_with_email(email, "Processed video",
                                  "Thank you, that's your processed video\nHere is your video:\n" + vid_link)
+    # api.upload_video()  # сюда правильно написать функцию отправки видео
     os.remove("queue/" + filename)
 
-# @celery.task(name='stream.download_nvr')
-# def download_nvr(room, date, time):
 
-
-if __name__ == "__main__":
-    date_begin = date(2020, 2, 6)
-    time_begin = datetime(1, 1, 1, 9, 30)
-    time_end = datetime(1, 1, 1, 16, 00)
+def stream(date_begin, time_begin, time_end, n=4):
     data = {}
     data['room'] = '504'
     data['em'] = False
     data['recog'] = False
     data['remember'] = False
     date_end = datetime.now().date()
+    p = {}
+    m = 60
+    h = 3600
     while date_begin <= date_end:
+        data['date'] = date_begin.strftime('%Y-%m-%d')
+        time_begin = datetime(1, 1, 1, 9, 30)
         while time_begin <= time_end:
-            data['date'] = date_begin.strftime('%Y-%m-%d')
-            data['time'] = time_begin.strftime('%H:%M')
-            print(data)
-            filename = api.download_video_nvr(data['room'], data['date'], data['time'])
-            print(filename)
-            processing_nvr_.apply_async(args=[data, filename], queue='low', priority=1)
-            time.sleep(10)
-            time_begin += timedelta(minutes=30)
+            for i in range(n):
+                data['time'] = time_begin.strftime('%H:%M')
+                print(data)
+                p[str(i)] = processing_nvr_.apply_async(args=[data], queue=str(i), priority=i)
+                time.sleep(5)
+                time_begin += timedelta(minutes=30)
+            flag = False
+            while not flag:
+                flag = True
+                for i in range(n):
+                    if not p[str(i)].ready():
+                        flag = False
+                        break
+                time.sleep(5 * m)
+        while date_begin == date_end:
+            time.sleep(18 * h)
+            date_end = datetime.now().date()
         date_begin += timedelta(days=1)
 
-    #  celery worker -A stream.celery --loglevel=info -n low1 -Q low -P eventlet
 
-    # date_begin = date(2020, 2, 6)
-    # time_begin = datetime(1, 1, 1, 9, 30)
-    # time_end = datetime(1, 1, 1, 16, 00)
-    # data = {}
-    # data['room'] = '504'
-    # data['em'] = False
-    # data['recog'] = False
-    # data['remember'] = False
-    # date_end = datetime.now().date()
-    # while date_begin <= date_end:
-    #     while time_begin <= time_end:
-    #         data['date'] = date_begin.strftime('%Y-%m-%d')
-    #         data['time'] = time_begin.strftime('%H:%M')
-    #         print(data)
-    #         filename = api.download_video_nvr(data['room'], data['date'], data['time'])
-    #         print(filename)
-    #         processing_nvr_.apply_async(args=[data, filename], queue='low', priority=1)
-    #         time.sleep(10)
-    #         time_begin += timedelta(minutes=30)
-    #     date_begin += timedelta(days=1)
+if __name__ == "__main__":
+    date_begin = date(2020, 2, 6)
+    time_begin = datetime(1, 1, 1, 9, 30)  # время 9:30
+    time_end = datetime(1, 1, 1, 16, 00)  # время 16:00
+    workers = 4  # сюда писать количество воркеров
+    stream(date_begin, time_begin, time_end, workers)
+
+
+    #  celery purge
+    #  celery worker -A stream.celery --loglevel=info -n 0 -Q 0 -P eventlet
+    #  celery worker -A stream.celery --loglevel=info -n 1 -Q 1 -P eventlet
+    #  celery worker -A stream.celery --loglevel=info -n 2 -Q 2 -P eventlet
+    #  celery worker -A stream.celery --loglevel=info -n 3 -Q 3 -P eventlet
+    #  celery worker -A stream.celery --loglevel=info -n 4 -Q 4 -P eventlet
+    #  celery worker -A stream.celery --loglevel=info -n 5 -Q 5 -P eventlet
+    #  celery worker -A stream.celery --loglevel=info -n 6 -Q 6 -P eventlet
+    #  celery worker -A stream.celery --loglevel=info -n 7 -Q 7 -P eventlet

@@ -13,10 +13,14 @@ CELERY_QUEUES = (
     Queue('high', Exchange('high'), routing_key='high'),
     Queue('normal', Exchange('normal'), routing_key='normal'),
     Queue('low', Exchange('low'), routing_key='low'),
+    Queue('0', Exchange('0'), routing_key='0'),
     Queue('1', Exchange('1'), routing_key='1'),
     Queue('2', Exchange('2'), routing_key='2'),
     Queue('3', Exchange('3'), routing_key='3'),
     Queue('4', Exchange('4'), routing_key='4'),
+    Queue('5', Exchange('5'), routing_key='5'),
+    Queue('6', Exchange('6'), routing_key='6'),
+    Queue('7', Exchange('7'), routing_key='7'),
 )
 
 CELERY_DEFAULT_QUEUE = 'normal'
@@ -25,7 +29,7 @@ CELERY_DEFAULT_ROUTING_KEY = 'normal'
 
 CELERY_ROUTES = {
     # -- HIGH PRIORITY QUEUE -- #
-    'celery.processing': {'queue': 'high'},
+    'app.celery.processing': {'queue': 'high'},
     # -- LOW PRIORITY QUEUE -- #
-    'celery.processing_nvr_': {'queue': 'low'},
+    'app.celery.processing_nvr': {'queue': 'low'},
 }
