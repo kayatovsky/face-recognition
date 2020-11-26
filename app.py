@@ -216,7 +216,7 @@ def nvr():
                 'date': request.form['date'],
                 'time': hour + ":" + minute}
         email = current_user.email
-        processing_nvr.apply_async(args=[data, email], queue='low', priority=1)
+        processing_nvr.apply_async(args=[data, email], queue='low', priority=4)
 
         # processing(filename, emotions, recognize, remember)
         return redirect('/')
@@ -250,7 +250,7 @@ def upload():
 
         file.save(path_uuid)
         logger.info(f'the file {file.filename} has been successfully saved as {filename_uuid}')
-        processing.apply_async((filename_uuid, emotions, recognize, remember, current_user.email,), queue='high', priority=4)
+        processing.apply_async((filename_uuid, emotions, recognize, remember, current_user.email,), queue='high', priority=1)
         return redirect('/')
 
 
@@ -267,7 +267,7 @@ def send_file(filename, link=''):
     return "https://drive.google.com/file/d/" + _id + "/" + link
 
 
-@celery.task()  # name='celery.processing'
+@celery.task(name='app.processing')  # name='celery.processing'
 def processing(filename, em=False, recog=False, remember=False, email=None):
     """Celery function for the image processing."""
     rofl = ROFL("trained_knn_model.clf", retina=True, on_gpu=False, emotions=True)
@@ -284,7 +284,7 @@ def processing(filename, em=False, recog=False, remember=False, email=None):
     os.remove("queue/" + filename)
 
 
-@celery.task()  # name='celery.processing_nvr'
+@celery.task(name='app.processing_nvr')  # name='celery.processing_nvr'
 def processing_nvr(data, email):
     """Celery function for the image processing."""
     room = data['room']
@@ -299,7 +299,7 @@ def processing_nvr(data, email):
 
     rofl = ROFL("trained_knn_model.clf", retina=True,
                 on_gpu=False, emotions=True)
-    rofl.basic_run("queue", filename.split('/')[1], emotions=data['em'],
+    rofl.basic_run("queue", filename, emotions=data['em'],
                    recognize=data['recog'], remember=data['remember'],
                    fps_factor=30)
     print(filename)
@@ -319,12 +319,11 @@ if __name__ == "__main__":
 
     # запускаем редис (или перезапускаем)
     # flower celery (пишем в терминале1)
+    # celery purge
     # celery -A app.celery worker --loglevel=info -n high -Q high -P eventlet
     # celery -A app.celery worker --loglevel=info -n low1 -Q low -P eventlet
     # celery -A app.celery worker --loglevel=info -n low2 -Q low -P eventlet
     # celery -A app.celery worker --loglevel=info -n low3 -Q low -P eventlet
-    # попробовать откатить селери до 3.1.24 примерно
-    # попробовать другие версии eventlet
     if not os.path.isdir('video_output'):
         os.mkdir('video_output')
     if not os.path.isdir('queue'):
