@@ -15,11 +15,22 @@ import shutil
 
 class ROFL:
 
-    def __init__(self, recognizer_path, retina=False, on_gpu=False, emotions=False):
+    def __init__(self, recognizer_path, retina=False, on_gpu=False, emotions=False,
+                 confidence_threshold=0.02,
+                 top_k=5000,
+                 nms_threshold=0.4,
+                 keep_top_k=750,
+                 vis_thres=0.6,
+                 network='resnet50',
+                 distance_threshold=0.4,
+                 samples=5,
+                 eps=0.3):
         self.on_gpu = on_gpu
 
         if retina:
-            self.finder = FaceFinder(on_gpu=on_gpu)
+            self.finder = FaceFinder(on_gpu=on_gpu, confidence_threshold=confidence_threshold,
+                                     top_k=top_k, nms_threshold=nms_threshold, keep_top_k=keep_top_k,
+                                     vis_thres=vis_thres, network=network)
         else:
             self.finder = None
 
@@ -29,9 +40,9 @@ class ROFL:
             self.emotions = None
 
         self.recognizer_retrained = True
-        self.recog = Recognizer(finder=self.finder)
+        self.recog = Recognizer(finder=self.finder, distance_threshold=distance_threshold)
         self.recog.load_model(recognizer_path)
-        self.clust = Clusterizer(samples=5)
+        self.clust = Clusterizer(samples=samples, eps=eps)
 
     def load_video(self, video, fps_factor):
         """load video for analysis.
@@ -66,7 +77,7 @@ class ROFL:
                 t = time.time()
             face_loc = self.finder.detect_faces(img)
             if recognize:
-                face_predictions.append(self.recog.predict(img, distance_threshold=0.4, X_face_locations=face_loc))
+                face_predictions.append(self.recog.predict(img, X_face_locations=face_loc))
             if emotions:
                 em_predictions.append(self.emotions.classify_emotions(img, face_locations=face_loc))
             if i == 2:

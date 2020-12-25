@@ -14,9 +14,10 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 class Recognizer:
 
-    def __init__(self, finder=None):
+    def __init__(self, finder=None, distance_threshold=0.4):
         self.finder = finder
         self.knn = None
+        self.distance_threshold = distance_threshold
 
     def train(self, train_dir="./known_faces", model_save_path=None, n_neighbors=None, knn_algo='ball_tree', verbose=False):
         """
@@ -99,12 +100,10 @@ class Recognizer:
         with open(path, 'rb') as f:
             self.knn = pickle.load(f)
 
-    def predict(self, x_img, distance_threshold=0.6, X_face_locations=None):
+    def predict(self, x_img, X_face_locations=None):
         """
         Recognizes faces in given image using a trained KNN classifier
         :param x_img: image to be recognized as ndarray
-        :param distance_threshold: (optional) distance threshold for face classification. the larger it is,
-            the more chance of mis-classifying an unknown person as a known one.
         :return: a list of names and face locations for the recognized faces in the image: [(name, bounding box), ...].
             For faces of unrecognized persons, the name 'unknown' will be returned.
         """
@@ -131,7 +130,7 @@ class Recognizer:
 
         # Use the KNN model to find the best matches for the test face
         closest_distances = self.knn.kneighbors(faces_encodings, n_neighbors=1)
-        are_matches = [closest_distances[0][i][0] <= distance_threshold for i in range(len(X_face_locations))]
+        are_matches = [closest_distances[0][i][0] <= self.distance_threshold for i in range(len(X_face_locations))]
 
         # Predict classes and remove classifications that aren't within the threshold
         return [(pred, loc) if rec else ("unknown", loc) for pred, loc, rec in zip(self.knn.predict(faces_encodings),
