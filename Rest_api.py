@@ -23,7 +23,8 @@ class config(Resource):
                         'network': config[str(id)]['network'],
                         'distance_threshold': config[str(id)]['distance_threshold'],
                         'samples': config[str(id)]['samples'],
-                        'eps': config[str(id)]['eps']
+                        'eps': config[str(id)]['eps'],
+                        'fps_factor': config[str(id)]['fps_factor']
                         }
                 return list, 200
             else:
@@ -37,7 +38,8 @@ class config(Resource):
                                'network': config[str(i)]['network'],
                                'distance_threshold': config[str(i)]['distance_threshold'],
                                'samples': config[str(i)]['samples'],
-                               'eps': config[str(i)]['eps']
+                               'eps': config[str(i)]['eps'],
+                               'fps_factor': config[str(i)]['fps_factor']
                                }
                     i += 1
                 return list, 200
@@ -46,7 +48,7 @@ class config(Resource):
 
     def put(self, confidence_threshold, top_k, nms_threshold,
             keep_top_k, vis_thres, network,
-            distance_threshold, samples, eps, id=0):
+            distance_threshold, samples, eps, fps_factor, id=0):
         try:
             config = configparser.ConfigParser()
             config.read('config.ini')
@@ -60,7 +62,8 @@ class config(Resource):
                                'network': network,
                                'distance_threshold': distance_threshold,
                                'samples': samples,
-                               'eps': eps
+                               'eps': eps,
+                               'fps_factor': fps_factor
                                }
             with open('config.ini', 'w') as configfile:
                 config.write(configfile)
@@ -98,7 +101,7 @@ api.add_resource(config, '/config',
 
                  '/config/<float:confidence_threshold>/<float:top_k>/<float:nms_threshold>/'
                  '<float:keep_top_k>/<float:vis_thres>/<string:network>/<float:distance_threshold>/'
-                 '<float:samples>/<float:eps>')
+                 '<float:samples>/<float:eps>/<float:fps_factor>')
 api.add_resource(record, '/record/<string:date_time>')
 if __name__ == "__main__":
     app.run(debug=True)
