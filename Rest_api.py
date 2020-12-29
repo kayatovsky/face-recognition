@@ -87,11 +87,12 @@ class config(Resource):
 
 
 class record(Resource):
-    def get(self, room_num, date_time):
+    def get(self, room_num, date, time):
         try:
-            date = datetime.datetime.strptime(date_time, '%Y-%m-%d')
-            time = datetime.datetime.strptime(date_time, '%H:%M')
+            date = datetime.datetime.strptime(date, '%Y-%m-%d')
+            time = datetime.datetime.strptime(time, '%H:%M')
             rec = Recording.get(room_num, date, time)
+            print(rec)
             if rec is None:
                 return "Video not found", 404
             rec = rec.json
@@ -106,6 +107,6 @@ api.add_resource(config, '/config',
                  '/config/<float:confidence_threshold>/<float:top_k>/<float:nms_threshold>/'
                  '<float:keep_top_k>/<float:vis_thres>/<string:network>/<float:distance_threshold>/'
                  '<float:samples>/<float:eps>/<float:fps_factor>')
-api.add_resource(record, '/record/<string:room_num>/<string:date_time>')
+api.add_resource(record, '/record/<string:room_num>/<string:date>/<string:time>')
 if __name__ == "__main__":
     app.run(debug=True)
