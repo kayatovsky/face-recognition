@@ -12,40 +12,30 @@ import torch
 
 
 class FaceFinder:
-    def __init__(self, on_gpu=False):
+    def __init__(self, on_gpu=False,
+                 confidence_threshold=0.02,
+                 top_k=5000,
+                 nms_threshold=0.4,
+                 keep_top_k=750,
+                 vis_thres=0.6,
+                 network='resnet50'):
         self.on_gpu = on_gpu
 
         # from classifier by Sizykh Ivan
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        # parser = argparse.ArgumentParser(description='Retinaface')
-        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        #
-        # parser.add_argument('-m', '--trained_model', default='./weights/Resnet50_Final.pth',
-        #                     type=str, help='Trained state_dict file path to open')
-        # parser.add_argument('--network', default='resnet50', help='Backbone network mobile0.25 or resnet50')
-        # # parser.add_argument('--cpu', action="store_true", default=False, help='Use cpu inference')
-        # parser.add_argument('--cpu', action="store_true", default=False, help='Use cpu inference')
-        # parser.add_argument('--confidence_threshold', default=0.02, type=float, help='confidence_threshold')
-        # parser.add_argument('--top_k', default=5000, type=int, help='top_k')
-        # parser.add_argument('--nms_threshold', default=0.4, type=float, help='nms_threshold')
-        # parser.add_argument('--keep_top_k', default=750, type=int, help='keep_top_k')
-        # parser.add_argument('-s', '--save_image', action="store_true", default=True, help='show detection results')
-        # parser.add_argument('--vis_thres', default=0.6, type=float, help='visualization_threshold')
-        #
-        # parser.add_argument('-v', '--video', default='vid.mp4', type=str)
-        #
-        # args = parser.parse_args()
-        self.trained_model = './weights/Resnet50_Final.pth'
-        self.network = 'resnet50'
+        self.network = network
         self.cpu = False
-        self.confidence_threshold = 0.02
-        self.top_k = 5000
-        self.nms_threshold = 0.4
-        self.keep_top_k = 750
-        self.vis_thres = 0.6
-
+        self.confidence_threshold = confidence_threshold
+        self.top_k = top_k
+        self.nms_threshold = nms_threshold
+        self.keep_top_k = keep_top_k
+        self.vis_thres = vis_thres
+        if network == 'resnet50':
+            self.trained_model = './weights/Resnet50_Final.pth'
+        else:
+            self.trained_model = './weights/mobilenet0.25_Final.pth'
         self.resize = 1
 
         torch.set_grad_enabled(False)
@@ -173,3 +163,21 @@ class FaceFinder:
             faces.append((int(f[1]), int(f[2]), int(f[3]), int(f[0])))
 
         return faces
+        # parser = argparse.ArgumentParser(description='Retinaface')
+        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        #
+        # parser.add_argument('-m', '--trained_model', default='./weights/Resnet50_Final.pth',
+        #                     type=str, help='Trained state_dict file path to open')
+        # parser.add_argument('--network', default='resnet50', help='Backbone network mobile0.25 or resnet50')
+        # # parser.add_argument('--cpu', action="store_true", default=False, help='Use cpu inference')
+        # parser.add_argument('--cpu', action="store_true", default=False, help='Use cpu inference')
+        # parser.add_argument('--confidence_threshold', default=0.02, type=float, help='confidence_threshold')
+        # parser.add_argument('--top_k', default=5000, type=int, help='top_k')
+        # parser.add_argument('--nms_threshold', default=0.4, type=float, help='nms_threshold')
+        # parser.add_argument('--keep_top_k', default=750, type=int, help='keep_top_k')
+        # parser.add_argument('-s', '--save_image', action="store_true", default=True, help='show detection results')
+        # parser.add_argument('--vis_thres', default=0.6, type=float, help='visualization_threshold')
+        #
+        # parser.add_argument('-v', '--video', default='vid.mp4', type=str)
+        #
+        # args = parser.parse_args()

@@ -1,5 +1,4 @@
 from sklearn.cluster import DBSCAN
-from imutils import build_montages, paths
 import numpy as np
 import pickle
 import cv2
@@ -10,8 +9,8 @@ import random
 
 class Clusterizer:
 
-    def __init__(self, cpus=-1, samples=5):
-        self.clt = DBSCAN(eps=0.4, metric="euclidean", n_jobs=cpus, min_samples=samples)
+    def __init__(self, cpus=-1, samples=5, eps=0.3):
+        self.clt = DBSCAN(eps=eps, metric="euclidean", n_jobs=cpus, min_samples=samples)
 
     def find_clusters(self, enc_path):
         print("[INFO] loading encodings...")

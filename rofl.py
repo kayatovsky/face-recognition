@@ -11,15 +11,27 @@ import video_maker
 import encode
 from emotions import Emanalisis
 import shutil
+import json
 
 
 class ROFL:
 
-    def __init__(self, recognizer_path, retina=False, on_gpu=False, emotions=False):
+    def __init__(self, recognizer_path, retina=False, on_gpu=False, emotions=False,
+                 confidence_threshold=0.02,
+                 top_k=5000,
+                 nms_threshold=0.4,
+                 keep_top_k=750,
+                 vis_thres=0.6,
+                 network='resnet50',
+                 distance_threshold=0.4,
+                 samples=5,
+                 eps=0.3):
         self.on_gpu = on_gpu
 
         if retina:
-            self.finder = FaceFinder(on_gpu=on_gpu)
+            self.finder = FaceFinder(on_gpu=on_gpu, confidence_threshold=confidence_threshold,
+                                     top_k=top_k, nms_threshold=nms_threshold, keep_top_k=keep_top_k,
+                                     vis_thres=vis_thres, network=network)
         else:
             self.finder = None
 
@@ -29,9 +41,10 @@ class ROFL:
             self.emotions = None
 
         self.recognizer_retrained = True
-        self.recog = Recognizer(finder=self.finder)
+        self.recog = Recognizer(finder=self.finder, distance_threshold=distance_threshold)
         self.recog.load_model(recognizer_path)
-        self.clust = Clusterizer(samples=5)
+        self.clust = Clusterizer(samples=samples, eps=eps)
+        self.em_labels = ['ANGRY', 'DISGUST', 'FEAR', 'HAPPY', 'SAD', 'SURPRISE', 'NEUTRAL']
 
     def load_video(self, video, fps_factor):
         """load video for analysis.
@@ -57,7 +70,7 @@ class ROFL:
             i += 1
         return np.asarray(out_arr), cap.get(cv2.CAP_PROP_FPS)
 
-    def analyse(self, img_arr, recognize=False, emotions=False):
+    def analyse(self, img_arr, recognize=False, emotions=False, one_array=False):
         face_predictions = []
         em_predictions = []
         i = 1
@@ -66,7 +79,7 @@ class ROFL:
                 t = time.time()
             face_loc = self.finder.detect_faces(img)
             if recognize:
-                face_predictions.append(self.recog.predict(img, distance_threshold=0.4, X_face_locations=face_loc))
+                face_predictions.append(self.recog.predict(img, X_face_locations=face_loc))
             if emotions:
                 em_predictions.append(self.emotions.classify_emotions(img, face_locations=face_loc))
             if i == 2:
@@ -76,6 +89,28 @@ class ROFL:
                 print("Approximately " + str(m) + " minutes and " + str(s) + " seconds to make predictions")
             print(str(i / len(img_arr) * 100) + "% of video is done")
             i += 1
+        if one_array:
+            out_array = []
+            if recognize and emotions:
+                for em, face in zip(em_predictions, face_predictions):
+                    buf = []
+                    for e, f in zip(em, face):
+                        buf.append((e[1], self.em_labels[np.argmax(e[0])], f[0]))
+                    out_array.append(buf)
+            elif recognize:
+                for face in face_predictions:
+                    buf = []
+                    for f in face:
+                        buf.append((f[1], None, f[0]))
+                    out_array.append(buf)
+            elif emotions:
+                for em in em_predictions:
+                    buf = []
+                    for e in em:
+                        buf.append((e[1], self.em_labels[np.argmax(e[0])], None))
+                    out_array.append(buf)
+            return out_array
+
         return face_predictions, em_predictions
 
     def find_emotions(self, img_arr):
@@ -121,6 +156,51 @@ class ROFL:
             encode.encode_cluster_sf("./strangers", "./enc_cluster.pickle")
             self.clust.remember_strangers("./enc_cluster.pickle", "./known_faces")
         return filename
+
+    def json_run(self, in_dir, filename, fps_factor=1, recognize=False, remember=False, emotions=False):
+        orig_img_arr, orig_fps = self.load_video(in_dir + "/" + filename, fps_factor)
+        new_fps = orig_fps / fps_factor
+
+        array = self.analyse(orig_img_arr, recognize=recognize, emotions=emotions, one_array=True)
+
+        # if recognize:
+        #     img_arr = video_maker.boxes(orig_img_arr, predictions=face_predictions, headcount=True, faces_on=recognize)
+        # if emotions:
+        #     img_arr = video_maker.emotion_boxes(orig_img_arr, em_predictions, headcount=True, faces_on=recognize)
+
+        recording = {"name": filename,
+                     "fps": new_fps,
+                     "config": {
+                         "confidence_threshold": self.finder.confidence_threshold,
+                         "top_k":self.finder.top_k,
+                         "nms_threshold": self.finder.nms_threshold,
+                         "keep_top_k": self.finder.keep_top_k,
+                         "vis_thres": self.finder.vis_thres,
+                         "network": self.finder.network,
+                         "distance_threshold": self.recog.distance_threshold,
+                         "samples": self.clust.clt.min_samples,
+                         "eps": self.clust.clt.eps,
+                         "fps_factor": fps_factor
+                     },
+                     "frames": array}
+
+        with open('recordings/' + filename.split('.')[0] + '.json', 'w') as f:
+            json.dump(recording, f)
+
+        if remember and recognize:
+            for img, pred in zip(orig_img_arr, array):
+                for (top, right, bottom, left), em, name in pred:
+                    if name == "unknown":
+                        # save_img = cv2.cvtColor(img[top:bottom, right:left], cv2.COLOR_BGR2RGB)
+                        save_img = img[top:bottom, left:right]
+                        # cv2.imshow("Haha", save_img)
+                        # cv2.waitKey(0)
+                        cv2.imwrite("./strangers/" + datetime.datetime.now().strftime("%d%m%Y%H%M%S%f") + ".jpg",
+                                    save_img)
+
+            encode.encode_cluster_sf("./strangers", "./enc_cluster.pickle")
+            self.clust.remember_strangers("./enc_cluster.pickle", "./known_faces")
+        return recording
 
     async def async_run(self, loop, in_dir, filename, fps_factor=1, recognize=False, remember=False, emotions=False):
         orig_img_arr, orig_fps = await loop.run_in_executor(None, self.load_video, in_dir + "/" + filename, fps_factor)
