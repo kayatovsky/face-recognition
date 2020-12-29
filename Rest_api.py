@@ -3,7 +3,7 @@ from flask_restful import Api, Resource
 from bson.json_util import dumps
 import datetime
 import configparser
-
+from user import Recording
 app = Flask(__name__)
 api = Api(app)
 
@@ -87,13 +87,17 @@ class config(Resource):
 
 
 class record(Resource):
-    def get(self, date_time):
+    def get(self, room_num, date_time):
         try:
-            dt = datetime.datetime.strptime(date_time, '%Y-%m-%d %H:%M')
-            # TODO: получить данные по распознаванию
-            return 200
+            date = datetime.datetime.strptime(date_time, '%Y-%m-%d')
+            time = datetime.datetime.strptime(date_time, '%H:%M')
+            rec = Recording.get(room_num, date, time)
+            if rec is None:
+                return "Video not found", 404
+            rec = rec.json
+            return rec, 200
         except:
-            return "Video not found", 404
+            return "Server error", 500
 
 
 api.add_resource(config, '/config',
@@ -102,6 +106,6 @@ api.add_resource(config, '/config',
                  '/config/<float:confidence_threshold>/<float:top_k>/<float:nms_threshold>/'
                  '<float:keep_top_k>/<float:vis_thres>/<string:network>/<float:distance_threshold>/'
                  '<float:samples>/<float:eps>/<float:fps_factor>')
-api.add_resource(record, '/record/<string:date_time>')
+api.add_resource(record, '/record/<string:room_num>/<string:date_time>')
 if __name__ == "__main__":
     app.run(debug=True)
